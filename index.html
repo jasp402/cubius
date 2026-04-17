@@ -1,0 +1,128 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Cubius - Juego de Cubos 3D</title>
+    <link rel="stylesheet" href="style.css">
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link href="https://fonts.googleapis.com/css2?family=Nunito:wght@600;700;800;900&display=swap" rel="stylesheet">
+    <script type="importmap">
+    {
+        "imports": {
+            "three": "https://cdn.jsdelivr.net/npm/three@0.170.0/build/three.module.js",
+            "three/addons/": "https://cdn.jsdelivr.net/npm/three@0.170.0/examples/jsm/"
+        }
+    }
+    </script>
+</head>
+<body>
+    <!-- Header -->
+    <header id="app-header">
+        <h1>CUBIUS</h1>
+        <nav id="mode-tabs">
+            <button class="tab active" data-mode="1">
+                <span class="tab-icon">📦</span>
+                <span>Colocar Cubos</span>
+            </button>
+            <button class="tab" data-mode="2">
+                <span class="tab-icon">🎯</span>
+                <span>Llenar Figura</span>
+            </button>
+            <button class="tab" data-mode="3">
+                <span class="tab-icon">🔢</span>
+                <span>Contar Bloques</span>
+            </button>
+        </nav>
+    </header>
+
+    <!-- Main content -->
+    <main id="app-main">
+        <div id="canvas-container"></div>
+
+        <aside id="side-panel">
+            <!-- Mode 1 controls -->
+            <div id="mode1-controls" class="controls-panel">
+                <h2>Colores</h2>
+                <div id="color-picker"></div>
+                <div class="controls-group">
+                    <button id="btn-undo" class="btn-action">↩️ Deshacer</button>
+                    <button id="btn-clear" class="btn-action btn-danger">🗑️ Limpiar</button>
+                </div>
+                <div class="hint">
+                    <p><strong>Clic izquierdo</strong>: colocar cubo</p>
+                    <p><strong>Clic derecho + arrastrar</strong>: rotar vista</p>
+                    <p><strong>Rueda</strong>: zoom</p>
+                </div>
+            </div>
+
+            <!-- Mode 2 controls -->
+            <div id="mode2-controls" class="controls-panel hidden">
+                <h2>Elige una Figura</h2>
+                <select id="figure-select">
+                    <option value="stairs">Escalera (6 cubos)</option>
+                    <option value="lshape">Letra L (4 cubos)</option>
+                    <option value="cross">Cruz (5 cubos)</option>
+                    <option value="tower">Torre (6 cubos)</option>
+                    <option value="cube2x2">Cubo 2x2x2 (8 cubos)</option>
+                    <option value="pyramid">Piramide (14 cubos)</option>
+                </select>
+                <div id="figure-progress">
+                    <div class="progress-bar">
+                        <div id="progress-fill" class="progress-fill"></div>
+                    </div>
+                    <span id="progress-text">0 / 0 bloques</span>
+                </div>
+                <button id="btn-reset-figure" class="btn-action">🔄 Reiniciar Figura</button>
+                <div class="hint">
+                    <p><strong>Arrastra</strong> los bloques de abajo hasta las posiciones punteadas</p>
+                </div>
+            </div>
+
+            <!-- Mode 3 controls -->
+            <div id="mode3-controls" class="controls-panel hidden">
+                <h2>Contar Bloques</h2>
+                <div id="count-display">
+                    <div class="count-total">
+                        <span>Total</span>
+                        <span id="total-count">0</span>
+                    </div>
+                </div>
+                <div id="view-toggle">
+                    <button class="view-btn active" data-view="all">Todo Junto</button>
+                    <button class="view-btn" data-view="levels">Por Niveles</button>
+                </div>
+                <div id="level-breakdown"></div>
+                <div class="controls-group">
+                    <button id="btn-undo-m3" class="btn-action">↩️ Deshacer</button>
+                    <button id="btn-clear-m3" class="btn-action btn-danger">🗑️ Limpiar</button>
+                </div>
+                <div class="hint">
+                    <p><strong>Coloca cubos</strong> y cuentalos</p>
+                    <p>Cambia la vista para ver por niveles</p>
+                </div>
+            </div>
+        </aside>
+    </main>
+
+    <!-- Tray for Mode 2 -->
+    <div id="blocks-tray" class="hidden">
+        <h3>Bloques</h3>
+        <div id="tray-blocks"></div>
+    </div>
+
+    <!-- Drag ghost -->
+    <div id="drag-ghost"></div>
+
+    <!-- Completion modal -->
+    <div id="completion-modal" class="hidden">
+        <div class="modal-content">
+            <h2>🎉 ¡Excelente!</h2>
+            <p>Has completado la figura</p>
+            <button id="btn-next-figure" class="btn-action btn-primary">Siguiente Figura →</button>
+        </div>
+    </div>
+
+    <script type="module" src="app.js"></script>
+</body>
+</html>
