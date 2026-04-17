@@ -175,6 +175,28 @@ function focusBoardTarget(y = 0) {
     controls.target.set(boardCenter, y, boardCenter);
 }
 
+function getCenteredFigurePositions(positions) {
+    if (!positions || positions.length === 0) return [];
+
+    const xs = positions.map(pos => pos.x);
+    const zs = positions.map(pos => pos.z);
+    const minX = Math.min(...xs);
+    const maxX = Math.max(...xs);
+    const minZ = Math.min(...zs);
+    const maxZ = Math.max(...zs);
+
+    const width = maxX - minX + 1;
+    const depth = maxZ - minZ + 1;
+    const startX = Math.floor((CONFIG.gridSize - width) / 2);
+    const startZ = Math.floor((CONFIG.gridSize - depth) / 2);
+
+    return positions.map(pos => ({
+        x: startX + (pos.x - minX),
+        y: pos.y,
+        z: startZ + (pos.z - minZ),
+    }));
+}
+
 function styleGridHelper(grid, opacity) {
     grid.material.transparent = true;
     grid.material.opacity = opacity;
@@ -725,12 +747,13 @@ function loadFigure(figureName) {
 
     const figure = FIGURES[figureName];
     if (!figure) return;
+    const centeredPositions = getCenteredFigurePositions(figure.positions);
 
     state.currentFigure = figureName;
     state.figureTargets = [];
 
     // Create placeholder meshes
-    figure.positions.forEach((pos, idx) => {
+    centeredPositions.forEach((pos, idx) => {
         const phMesh = createPlaceholderMesh();
         const worldPos = gridToWorld(pos.x, pos.y, pos.z);
         phMesh.position.copy(worldPos);
@@ -747,8 +770,8 @@ function loadFigure(figureName) {
     });
 
     // Center camera on figure
-    const avgX = figure.positions.reduce((s, p) => s + p.x, 0) / figure.positions.length;
-    const avgZ = figure.positions.reduce((s, p) => s + p.z, 0) / figure.positions.length;
+    const avgX = centeredPositions.reduce((s, p) => s + p.x, 0) / centeredPositions.length;
+    const avgZ = centeredPositions.reduce((s, p) => s + p.z, 0) / centeredPositions.length;
     const worldTarget = gridToWorld(avgX, 0, avgZ);
     controls.target.set(worldTarget.x, 0.5, worldTarget.z);
 
