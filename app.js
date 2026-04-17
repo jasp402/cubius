@@ -568,19 +568,48 @@ function placeCubeAnimated(gx, gy, gz, color, group) {
     return cubeData;
 }
 
+function disposeObjectMaterials(object) {
+    object.traverse(child => {
+        if (!child.material) return;
+        const materials = Array.isArray(child.material) ? child.material : [child.material];
+        materials.forEach(material => material?.dispose());
+    });
+}
+
+function removeCube(cubeData) {
+    if (!cubeData) return false;
+
+    const cubeIndex = state.cubes.indexOf(cubeData);
+    if (cubeIndex === -1) return false;
+
+    state.cubes.splice(cubeIndex, 1);
+    cubeData.group.remove(cubeData.mesh);
+    state.originalColors.delete(cubeData.mesh);
+
+    if (cubeData.group === figureGroup) {
+        const target = state.figureTargets.find(t =>
+            t.pos.x === cubeData.gridPos.x &&
+            t.pos.y === cubeData.gridPos.y &&
+            t.pos.z === cubeData.gridPos.z
+        );
+        if (target) {
+            target.filled = false;
+            target.filledMesh = null;
+            if (target.placeholderMesh) target.placeholderMesh.visible = true;
+        }
+    }
+
+    disposeObjectMaterials(cubeData.mesh);
+    return true;
+}
+
 function removeLastCube() {
     if (state.cubes.length === 0) return;
-    const last = state.cubes.pop();
-    last.group.remove(last.mesh);
-    last.mesh.material.dispose();
+    removeCube(state.cubes[state.cubes.length - 1]);
 }
 
 function clearAllCubes() {
-    while (state.cubes.length > 0) {
-        const c = state.cubes.pop();
-        c.group.remove(c.mesh);
-        c.mesh.material.dispose();
-    }
+    while (state.cubes.length > 0) removeCube(state.cubes[state.cubes.length - 1]);
     state.originalColors.clear();
 }
 
@@ -1026,6 +1055,38 @@ function handleMode3Click() {
     }
 }
 
+function getIntersectedCube(event) {
+    if (state.cubes.length === 0) return null;
+
+    const ndc = getMouseNDC(event);
+    state.raycaster.setFromCamera(ndc, camera);
+
+    const intersects = state.raycaster.intersectObjects(state.cubes.map(c => c.mesh), false);
+    if (intersects.length === 0) return null;
+
+    return state.cubes.find(c => c.mesh === intersects[0].object) || null;
+}
+
+function handleCanvasRightClick(event) {
+    if (event.button !== 2) return;
+    if (state.mode !== 1 && state.mode !== 3) return;
+
+    const cubeData = getIntersectedCube(event);
+    if (!cubeData) return;
+
+    event.preventDefault();
+    event.stopPropagation();
+
+    removeCube(cubeData);
+
+    if (state.mode === 3) {
+        updateCount();
+        if (state.countView === 'levels') applyLevelColors();
+    }
+
+    onCanvasMouseMove(event);
+}
+
 // ============================================
 // MODE MANAGEMENT
 // ============================================
@@ -1066,6 +1127,7 @@ function setupEventListeners() {
     const canvas = renderer.domElement;
 
     // Canvas mouse events
+    canvas.addEventListener('pointerdown', handleCanvasRightClick, true);
     canvas.addEventListener('click', onCanvasClick);
     canvas.addEventListener('mousemove', onCanvasMouseMove);
     canvas.addEventListener('contextmenu', (e) => e.preventDefault());
@@ -1150,7 +1212,7 @@ function setupEventListeners() {
 }
 
 function onCanvasClick(event) {
-    // Ignore if right-click or if dragging
+    // Only left click places cubes
     if (event.button !== 0) return;
 
     if (state.mode === 1) {
