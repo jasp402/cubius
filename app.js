@@ -145,6 +145,7 @@ let scene, camera, renderer, controls;
 let groundPlane;
 let cubeGeometry, edgeGeometry;
 let placeholderGroup, figureGroup;
+let gizmoScene, gizmoCamera, gizmoRoot;
 
 function getPlacementAreaSize() {
     return CONFIG.gridSize * CONFIG.gridUnit;
@@ -201,6 +202,96 @@ function styleGridHelper(grid, opacity) {
     grid.material.transparent = true;
     grid.material.opacity = opacity;
     grid.material.depthWrite = false;
+}
+
+function createGizmoLabel(text, color) {
+    const canvas = document.createElement('canvas');
+    canvas.width = 128;
+    canvas.height = 128;
+
+    const ctx = canvas.getContext('2d');
+    ctx.clearRect(0, 0, canvas.width, canvas.height);
+    ctx.beginPath();
+    ctx.arc(64, 64, 42, 0, Math.PI * 2);
+    ctx.fillStyle = color;
+    ctx.fill();
+    ctx.lineWidth = 6;
+    ctx.strokeStyle = 'rgba(255,255,255,0.85)';
+    ctx.stroke();
+    ctx.fillStyle = '#ffffff';
+    ctx.font = 'bold 56px Nunito, sans-serif';
+    ctx.textAlign = 'center';
+    ctx.textBaseline = 'middle';
+    ctx.fillText(text, 64, 68);
+
+    const texture = new THREE.CanvasTexture(canvas);
+    texture.needsUpdate = true;
+
+    const material = new THREE.SpriteMaterial({
+        map: texture,
+        transparent: true,
+        depthTest: false,
+        depthWrite: false,
+    });
+    const sprite = new THREE.Sprite(material);
+    sprite.scale.set(0.46, 0.46, 0.46);
+    return sprite;
+}
+
+function createNavigationGizmo() {
+    gizmoScene = new THREE.Scene();
+    gizmoCamera = new THREE.PerspectiveCamera(40, 1, 0.1, 10);
+    gizmoCamera.position.set(0, 0, 4.8);
+
+    gizmoRoot = new THREE.Group();
+    gizmoScene.add(gizmoRoot);
+
+    const axisDefs = [
+        { dir: new THREE.Vector3(1, 0, 0), color: '#ff5b5b', label: 'X' },
+        { dir: new THREE.Vector3(0, 1, 0), color: '#58d68d', label: 'Y' },
+        { dir: new THREE.Vector3(0, 0, 1), color: '#5dade2', label: 'Z' },
+    ];
+
+    axisDefs.forEach(({ dir, color, label }) => {
+        const arrow = new THREE.ArrowHelper(dir, new THREE.Vector3(0, 0, 0), 1.2, color, 0.28, 0.16);
+        gizmoRoot.add(arrow);
+
+        const sprite = createGizmoLabel(label, color);
+        sprite.position.copy(dir.clone().multiplyScalar(1.45));
+        gizmoRoot.add(sprite);
+    });
+
+    const center = new THREE.Mesh(
+        new THREE.SphereGeometry(0.12, 16, 16),
+        new THREE.MeshBasicMaterial({
+            color: 0xffffff,
+            transparent: true,
+            opacity: 0.95,
+            depthTest: false,
+            depthWrite: false,
+        })
+    );
+    gizmoRoot.add(center);
+}
+
+function renderNavigationGizmo() {
+    if (!gizmoScene || !gizmoCamera || !gizmoRoot) return;
+
+    const size = renderer.getSize(new THREE.Vector2());
+    const gizmoSize = Math.max(84, Math.min(108, Math.round(Math.min(size.x, size.y) * 0.16)));
+    const margin = Math.max(14, Math.round(gizmoSize * 0.22));
+    const x = size.x - gizmoSize - margin;
+    const y = margin;
+
+    gizmoRoot.quaternion.copy(camera.quaternion).invert();
+
+    renderer.clearDepth();
+    renderer.setScissorTest(true);
+    renderer.setScissor(x, y, gizmoSize, gizmoSize);
+    renderer.setViewport(x, y, gizmoSize, gizmoSize);
+    renderer.render(gizmoScene, gizmoCamera);
+    renderer.setScissorTest(false);
+    renderer.setViewport(0, 0, size.x, size.y);
 }
 
 // ============================================
@@ -294,6 +385,7 @@ function initScene() {
     renderer = new THREE.WebGLRenderer({ antialias: true, alpha: false });
     renderer.setSize(container.clientWidth, container.clientHeight);
     renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
+    renderer.autoClear = false;
     renderer.shadowMap.enabled = true;
     renderer.shadowMap.type = THREE.PCFSoftShadowMap;
     renderer.toneMapping = THREE.ACESFilmicToneMapping;
@@ -304,7 +396,7 @@ function initScene() {
     controls = new OrbitControls(camera, renderer.domElement);
     controls.mouseButtons = {
         LEFT: null,
-        MIDDLE: THREE.MOUSE.DOLLY,
+        MIDDLE: THREE.MOUSE.PAN,
         RIGHT: THREE.MOUSE.ROTATE,
     };
     controls.touches = {
@@ -316,7 +408,7 @@ function initScene() {
     controls.maxPolarAngle = Math.PI / 2.1;
     controls.minPolarAngle = 0.2;
     focusBoardTarget();
-    controls.enablePan = false;
+    controls.enablePan = true;
 
     // Lights
     const ambientLight = new THREE.AmbientLight(0x6655aa, 0.8);
@@ -358,6 +450,7 @@ function initScene() {
 
     // Ground & grid
     createGround();
+    createNavigationGizmo();
 
     // Resize handler
     window.addEventListener('resize', onResize);
@@ -1282,7 +1375,9 @@ function animate() {
         });
     }
 
+    renderer.clear();
     renderer.render(scene, camera);
+    renderNavigationGizmo();
 }
 
 // ============================================
